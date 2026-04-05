@@ -1,3 +1,4 @@
+export const maxDuration = 60;
 export async function POST(request) {
   try {
     const { imageUrl, mockupId, size } = await request.json();
