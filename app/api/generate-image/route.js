@@ -1,20 +1,25 @@
+export const maxDuration = 120;
+
 export async function POST(request) {
   try {
     const { prompt, aspectRatio } = await request.json();
 
-    // Map aspect ratios to fal.ai image_size values
-    const sizeMap = {
-      '16:9': 'landscape_16_9',
-      '4:3': 'landscape_4_3',
-      '3:4': 'portrait_4_3',
-      '9:16': 'portrait_16_9',
-      '1:1': 'square',
+    if (!process.env.FAL_API_KEY) {
+      return Response.json({ error: 'FAL_API_KEY not configured' }, { status: 500 });
+    }
+
+    const ratioMap = {
+      '16:9': '16:9',
+      '4:3': '4:3',
+      '3:4': '3:4',
+      '9:16': '9:16',
+      '1:1': '1:1',
     };
 
-    const imageSize = sizeMap[aspectRatio] || 'landscape_16_9';
+    const ar = ratioMap[aspectRatio] || '16:9';
 
-    // Submit to fal.ai queue
-    const submitRes = await fetch('https://queue.fal.run/fal-ai/flux/schnell', {
+    // Submit to Nano Banana 2 queue
+    const submitRes = await fetch('https://queue.fal.run/fal-ai/nano-banana-2', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -22,68 +27,60 @@ export async function POST(request) {
       },
       body: JSON.stringify({
         prompt,
-        image_size: imageSize,
         num_images: 1,
-        num_inference_steps: 4,
-        enable_safety_checker: false,
+        aspect_ratio: ar,
+        output_format: 'png',
       }),
     });
 
     if (!submitRes.ok) {
-      const err = await submitRes.text();
-      return Response.json({ error: `fal.ai submit error: ${err}` }, { status: 500 });
+      const errText = await submitRes.text();
+      return Response.json({ error: `fal.ai submit error (${submitRes.status}): ${errText}` }, { status: 500 });
     }
 
     const submitData = await submitRes.json();
 
-    // If synchronous response with images
     if (submitData.images && submitData.images.length > 0) {
       return Response.json({ imageUrl: submitData.images[0].url });
     }
 
-    // If queued, poll for result
     const requestId = submitData.request_id;
     if (!requestId) {
-      return Response.json({ error: 'No request_id or images in response', raw: submitData }, { status: 500 });
+      return Response.json({ error: 'No request_id returned', raw: submitData }, { status: 500 });
     }
 
     // Poll for completion
     let attempts = 0;
-    const maxAttempts = 60;
+    const maxAttempts = 90;
 
     while (attempts < maxAttempts) {
       await new Promise((r) => setTimeout(r, 2000));
       attempts++;
 
       const statusRes = await fetch(
-        `https://queue.fal.run/fal-ai/flux/schnell/requests/${requestId}/status`,
-        {
-          headers: { Authorization: `Key ${process.env.FAL_API_KEY}` },
-        }
+        `https://queue.fal.run/fal-ai/nano-banana-2/requests/${requestId}/status`,
+        { headers: { Authorization: `Key ${process.env.FAL_API_KEY}` } }
       );
 
       if (!statusRes.ok) continue;
-
       const statusData = await statusRes.json();
 
       if (statusData.status === 'COMPLETED') {
-        // Fetch the result
         const resultRes = await fetch(
-          `https://queue.fal.run/fal-ai/flux/schnell/requests/${requestId}`,
-          {
-            headers: { Authorization: `Key ${process.env.FAL_API_KEY}` },
-          }
+          `https://queue.fal.run/fal-ai/nano-banana-2/requests/${requestId}`,
+          { headers: { Authorization: `Key ${process.env.FAL_API_KEY}` } }
         );
 
         if (!resultRes.ok) {
-          return Response.json({ error: 'Failed to fetch result' }, { status: 500 });
+          const errText = await resultRes.text();
+          return Response.json({ error: `Result fetch failed: ${errText}` }, { status: 500 });
         }
 
         const resultData = await resultRes.json();
         if (resultData.images && resultData.images.length > 0) {
           return Response.json({ imageUrl: resultData.images[0].url });
         }
-        return Response.json({ error: 'No images in result', raw: resultData }, { status: 500 });
+        return Response.json({ error: 'No images in result' }, { status: 500 });
       }
 
       if (statusData.status === 'FAILED') {
@@ -91,7 +88,7 @@ export async function POST(request) {
       }
     }
 
-    return Response.json({ error: 'Timeout waiting for image generation' }, { status: 504 });
+    return Response.json({ error: 'Timeout' }, { status: 504 });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }
