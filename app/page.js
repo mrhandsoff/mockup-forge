@@ -12,7 +12,7 @@ const DEVICE_META = {
 const DEFAULT_MOCKUP_IDS = {
   xdr: 'X7PbdxQKSQEqm43S',
   macbook: 'Z6NUCWxg1wFjtBDe',
-  ipad: 'adKDCNpIJk5GYtF8',
+  ipad: 'YXFDGB-dzQLH4wEz',
   iphone: 'XtWDyavzoAIcEXmZ',
 };
 
@@ -136,23 +136,9 @@ export default function Home() {
       }
     } catch (e) {}
 
-    // BG removal — iPad only
-    let noBgUrl = null;
-    if (mockupUrl && comp.device === 'ipad') {
-      setGeneratingStep('removing-bg');
-      try {
-        const bgRes = await fetch('/api/remove-bg', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ imageUrl: mockupUrl }),
-        });
-        if (bgRes.ok) { const bgData = await bgRes.json(); noBgUrl = bgData.imageUrl || null; }
-      } catch (e) {}
-    }
-
     setResults(prev => {
       const u = [...prev];
-      u[index] = { ...comp, status: mockupUrl ? 'success' : 'partial', rawImageUrl: imageUrl, mockupUrl, noBgUrl, error: mockupUrl ? null : 'Mockup render failed' };
+      u[index] = { ...comp, status: mockupUrl ? 'success' : 'partial', rawImageUrl: imageUrl, mockupUrl, error: mockupUrl ? null : 'Mockup render failed' };
       return u;
     });
     setCropData(null);
@@ -169,7 +155,7 @@ export default function Home() {
       const uploadRes = await fetch('/api/upload-cropped', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ base64, filename: `crop-${Date.now()}.png` }),
+        body: JSON.stringify({ base64, filename: `crop-${Date.now()}.jpg` }),
       });
       if (!uploadRes.ok) throw new Error('Upload failed');
       const { url } = await uploadRes.json();
@@ -225,7 +211,6 @@ export default function Home() {
       for (const r of results) {
         if (!r) continue;
         const urls = [];
-        if (r.noBgUrl) urls.push({ url: r.noBgUrl, suffix: 'no-bg' });
         if (r.mockupUrl) urls.push({ url: r.mockupUrl, suffix: 'mockup' });
         if (r.rawImageUrl) urls.push({ url: r.rawImageUrl, suffix: 'raw' });
         for (const { url, suffix } of urls) {
@@ -389,7 +374,7 @@ export default function Home() {
                   <div style={{ textAlign:'center', padding:'30px 0' }}>
                     <Spinner />
                     <p style={{ color:s.muted, fontSize:13, marginTop:12 }}>
-                      {generatingStep === 'image' ? 'Generating image...' : generatingStep === 'mockup' ? 'Rendering mockup...' : generatingStep === 'uploading' ? 'Uploading cropped image...' : 'Removing background...'}
+                      {generatingStep === 'image' ? 'Generating image...' : generatingStep === 'mockup' ? 'Rendering mockup...' : 'Uploading cropped image...'}
                     </p>
                   </div>
                 )}
@@ -410,7 +395,7 @@ export default function Home() {
                 {/* Result preview */}
                 {generatingStep === 'done' && results[currentIndex] && (
                   <div>
-                    <div style={{ display:'grid', gridTemplateColumns: results[currentIndex].noBgUrl ? '1fr 1fr 1fr' : results[currentIndex].mockupUrl ? '1fr 1fr' : '1fr', gap:12, marginBottom:16 }}>
+                    <div style={{ display:'grid', gridTemplateColumns: results[currentIndex].mockupUrl ? '1fr 1fr' : '1fr', gap:12, marginBottom:16 }}>
                       {results[currentIndex].rawImageUrl && (
                         <div>
                           <p style={{ fontSize:11, color:s.muted, marginBottom:6 }}>Raw Image</p>
@@ -421,12 +406,6 @@ export default function Home() {
                         <div>
                           <p style={{ fontSize:11, color:s.muted, marginBottom:6 }}>Device Mockup</p>
                           <img src={results[currentIndex].mockupUrl} alt="mockup" style={{ width:'100%', borderRadius:8, border:`1px solid ${s.border}` }} />
-                        </div>
-                      )}
-                      {results[currentIndex].noBgUrl && (
-                        <div>
-                          <p style={{ fontSize:11, color:s.muted, marginBottom:6 }}>No Background</p>
-                          <img src={results[currentIndex].noBgUrl} alt="no-bg" style={{ width:'100%', borderRadius:8, border:`1px solid ${s.border}`, background:'repeating-conic-gradient(#1a1a2e 0% 25%, #12121e 0% 50%) 50%/16px 16px' }} />
                         </div>
                       )}
                       {results[currentIndex].status === 'error' && (
@@ -462,8 +441,8 @@ export default function Home() {
                 return (
                   <div key={i} style={{ background:s.card, border:`1px solid ${r.status==='success'?s.border:'#4a1515'}`, borderRadius:10, overflow:'hidden' }}>
                     <div style={{ aspectRatio:'16/10', background:s.bg }}>
-                      {(r.noBgUrl || r.mockupUrl) ? (
-                        <img src={r.noBgUrl || r.mockupUrl} alt={r.name} style={{ width:'100%', height:'100%', objectFit:'contain' }} />
+                      {r.mockupUrl ? (
+                        <img src={r.mockupUrl} alt={r.name} style={{ width:'100%', height:'100%', objectFit:'contain' }} />
                       ) : r.rawImageUrl ? (
                         <img src={r.rawImageUrl} alt={r.name} style={{ width:'100%', height:'100%', objectFit:'contain', opacity:0.6 }} />
                       ) : (
@@ -490,8 +469,8 @@ export default function Home() {
 function CropTool({ imageUrl, targetW, targetH, deviceLabel, onConfirm, onSkip, s }) {
   const containerRef = useRef(null);
   const [pos, setPos] = useState({ x: 0, y: 0 });
-  const [imgSize, setImgSize] = useState({ w: 0, h: 0 });
-  const [naturalSize, setNaturalSize] = useState({ w: 0, h: 0 });
+  const [baseSize, setBaseSize] = useState({ w: 0, h: 0 });
+  const [scale, setScale] = useState(1.0);
   const [dragging, setDragging] = useState(false);
   const dragStart = useRef({ x: 0, y: 0, posX: 0, posY: 0 });
   const [loading, setLoading] = useState(true);
@@ -500,14 +479,18 @@ function CropTool({ imageUrl, targetW, targetH, deviceLabel, onConfirm, onSkip, 
   const previewW = 460;
   const previewH = previewW * (targetH / targetW);
 
+  // Current scaled image size
+  const imgW = baseSize.w * scale;
+  const imgH = baseSize.h * scale;
+
   useEffect(() => {
     setLoading(true);
     const img = new Image();
     img.onload = () => {
-      setNaturalSize({ w: img.naturalWidth, h: img.naturalHeight });
       const imgAspect = img.naturalWidth / img.naturalHeight;
       const containerAspect = previewW / previewH;
       let dw, dh;
+      // Base size: fill the container (cover mode)
       if (imgAspect > containerAspect) {
         dh = previewH;
         dw = previewH * imgAspect;
@@ -515,12 +498,34 @@ function CropTool({ imageUrl, targetW, targetH, deviceLabel, onConfirm, onSkip, 
         dw = previewW;
         dh = previewW / imgAspect;
       }
-      setImgSize({ w: dw, h: dh });
+      setBaseSize({ w: dw, h: dh });
+      setScale(1.0);
       setPos({ x: -(dw - previewW) / 2, y: -(dh - previewH) / 2 });
       setLoading(false);
     };
     img.src = imageUrl;
   }, [imageUrl, previewW, previewH]);
+
+  // Recenter when scale changes
+  const handleScaleChange = (newScale) => {
+    const newW = baseSize.w * newScale;
+    const newH = baseSize.h * newScale;
+    // Keep center point stable
+    const centerX = -pos.x + previewW / 2;
+    const centerY = -pos.y + previewH / 2;
+    const ratioX = centerX / imgW;
+    const ratioY = centerY / imgH;
+    let newX = -(ratioX * newW - previewW / 2);
+    let newY = -(ratioY * newH - previewH / 2);
+    // Clamp
+    newX = Math.min(0, Math.max(-(newW - previewW), newX));
+    newY = Math.min(0, Math.max(-(newH - previewH), newY));
+    // If image is smaller than container, center it
+    if (newW < previewW) newX = (previewW - newW) / 2;
+    if (newH < previewH) newY = (previewH - newH) / 2;
+    setScale(newScale);
+    setPos({ x: newX, y: newY });
+  };
 
   const handleMouseDown = (e) => {
     e.preventDefault();
@@ -532,10 +537,15 @@ function CropTool({ imageUrl, targetW, targetH, deviceLabel, onConfirm, onSkip, 
     if (!dragging) return;
     const dx = e.clientX - dragStart.current.x;
     const dy = e.clientY - dragStart.current.y;
-    const newX = Math.min(0, Math.max(-(imgSize.w - previewW), dragStart.current.posX + dx));
-    const newY = Math.min(0, Math.max(-(imgSize.h - previewH), dragStart.current.posY + dy));
+    let newX = dragStart.current.posX + dx;
+    let newY = dragStart.current.posY + dy;
+    // If image bigger than container, clamp to edges
+    if (imgW >= previewW) newX = Math.min(0, Math.max(-(imgW - previewW), newX));
+    else newX = Math.max(0, Math.min(previewW - imgW, newX));
+    if (imgH >= previewH) newY = Math.min(0, Math.max(-(imgH - previewH), newY));
+    else newY = Math.max(0, Math.min(previewH - imgH, newY));
     setPos({ x: newX, y: newY });
-  }, [dragging, imgSize, previewW, previewH]);
+  }, [dragging, imgW, imgH, previewW, previewH]);
 
   const handleMouseUp = useCallback(() => setDragging(false), []);
 
@@ -555,6 +565,10 @@ function CropTool({ imageUrl, targetW, targetH, deviceLabel, onConfirm, onSkip, 
       canvas.height = targetH;
       const ctx = canvas.getContext('2d');
 
+      // Fill with black in case image doesn't cover fully
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(0, 0, targetW, targetH);
+
       const img = new Image();
       img.crossOrigin = 'anonymous';
       await new Promise((resolve, reject) => {
@@ -563,14 +577,33 @@ function CropTool({ imageUrl, targetW, targetH, deviceLabel, onConfirm, onSkip, 
         img.src = `/api/proxy-image?url=${encodeURIComponent(imageUrl)}`;
       });
 
-      const scaleX = img.naturalWidth / imgSize.w;
-      const scaleY = img.naturalHeight / imgSize.h;
-      const sx = -pos.x * scaleX;
-      const sy = -pos.y * scaleY;
-      const sw = previewW * scaleX;
-      const sh = previewH * scaleY;
+      // Map preview coordinates to source image coordinates
+      const scaleToNatural = img.naturalWidth / imgW;
+      const sx = -pos.x * scaleToNatural;
+      const sy = -pos.y * scaleToNatural;
+      const sw = previewW * scaleToNatural;
+      const sh = previewH * scaleToNatural;
 
-      ctx.drawImage(img, sx, sy, sw, sh, 0, 0, targetW, targetH);
+      // If image is smaller than container (zoomed out), adjust destination
+      let dx = 0, dy = 0, dw = targetW, dh = targetH;
+      if (imgW < previewW) {
+        const padRatio = pos.x / previewW;
+        dx = padRatio * targetW;
+        dw = (imgW / previewW) * targetW;
+      }
+      if (imgH < previewH) {
+        const padRatio = pos.y / previewH;
+        dy = padRatio * targetH;
+        dh = (imgH / previewH) * targetH;
+      }
+
+      if (imgW < previewW || imgH < previewH) {
+        // Zoomed out — draw image centered with black background
+        ctx.drawImage(img, 0, 0, img.naturalWidth, img.naturalHeight, dx, dy, dw, dh);
+      } else {
+        // Zoomed in or exact — crop from source
+        ctx.drawImage(img, sx, sy, sw, sh, 0, 0, targetW, targetH);
+      }
 
       const base64 = canvas.toDataURL('image/jpeg', 0.9).split(',')[1];
       await onConfirm(base64);
@@ -580,46 +613,44 @@ function CropTool({ imageUrl, targetW, targetH, deviceLabel, onConfirm, onSkip, 
     setConfirming(false);
   };
 
-  if (loading) return <div style={{ textAlign:'center', padding:'40px 0' }}><Spinner /><p style={{ color:s.muted, fontSize:13, marginTop:12 }}>Loading image for positioning...</p></div>;
+  if (loading) return <div style={{ textAlign:'center', padding:'40px 0' }}><Spinner /><p style={{ color:s.muted, fontSize:13, marginTop:12 }}>Loading image...</p></div>;
 
   return (
     <div>
       <p style={{ fontSize:13, color:s.muted, marginBottom:12 }}>
-        Drag the image to position it within the <strong style={{ color:s.text }}>{deviceLabel}</strong> screen. The visible area is what goes into the mockup.
+        Position and zoom the image for the <strong style={{ color:s.text }}>{deviceLabel}</strong> screen. The visible area is what goes into the mockup.
       </p>
 
-      <div style={{ display:'flex', justifyContent:'center', marginBottom:16 }}>
+      <div style={{ display:'flex', justifyContent:'center', marginBottom:12 }}>
         <div
           ref={containerRef}
           onMouseDown={handleMouseDown}
           style={{
-            width: previewW,
-            height: previewH,
-            overflow: 'hidden',
-            position: 'relative',
+            width: previewW, height: previewH,
+            overflow: 'hidden', position: 'relative',
             cursor: dragging ? 'grabbing' : 'grab',
-            borderRadius: 8,
-            border: `2px solid ${s.accent}`,
-            background: s.bg,
+            borderRadius: 8, border: `2px solid ${s.accent}`, background: '#000',
           }}
         >
-          <img
-            src={imageUrl}
-            alt="crop preview"
-            draggable={false}
-            style={{
-              position: 'absolute',
-              left: pos.x,
-              top: pos.y,
-              width: imgSize.w,
-              height: imgSize.h,
-              pointerEvents: 'none',
-              userSelect: 'none',
-            }}
-          />
-          {/* Corner labels */}
-          <div style={{ position:'absolute', top:6, left:8, fontSize:10, color:s.accentLight, opacity:0.7 }}>{targetW}×{targetH}</div>
+          <img src={imageUrl} alt="crop preview" draggable={false} style={{
+            position: 'absolute', left: pos.x, top: pos.y,
+            width: imgW, height: imgH,
+            pointerEvents: 'none', userSelect: 'none',
+          }} />
+          <div style={{ position:'absolute', top:6, left:8, fontSize:10, color:s.accentLight, opacity:0.7, background:'rgba(0,0,0,0.5)', padding:'2px 6px', borderRadius:3 }}>{targetW}×{targetH}</div>
         </div>
+      </div>
+
+      {/* Zoom slider */}
+      <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:16, justifyContent:'center' }}>
+        <span style={{ fontSize:12, color:s.muted }}>Zoom out</span>
+        <input
+          type="range" min="0.3" max="2.0" step="0.05" value={scale}
+          onChange={e => handleScaleChange(parseFloat(e.target.value))}
+          style={{ width:200, accentColor:s.accent }}
+        />
+        <span style={{ fontSize:12, color:s.muted }}>Zoom in</span>
+        <span style={{ fontSize:12, color:s.accentLight, fontWeight:600, width:40 }}>{Math.round(scale * 100)}%</span>
       </div>
 
       <div style={{ display:'flex', gap:8 }}>
