@@ -5,14 +5,14 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 const DEVICE_META = {
   xdr: { label: 'Apple XDR', icon: '🖥️', aspect: '16:9' },
   macbook: { label: 'MacBook Pro', icon: '💻', aspect: '16:9' },
-  ipad: { label: 'iPad Pro', icon: '📱', aspect: '4:3' },
+  ipad: { label: 'iPad Pro', icon: '📱', aspect: '4:5' },
   iphone: { label: 'iPhone 17', icon: '📲', aspect: '9:16' },
 };
 
 const DEFAULT_MOCKUP_IDS = {
   xdr: 'X7PbdxQKSQEqm43S',
   macbook: 'XtWDyavzoAIcEXk2',
-  ipad: 'adKBPdpIJk5GYpvi',
+  ipad: 'ZvL81KPA3wFkHMzO',
   iphone: 'aMfKiv4O0AF5oGLE',
 };
 
