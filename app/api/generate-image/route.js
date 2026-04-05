@@ -8,10 +8,13 @@ export async function POST(request) {
       return Response.json({ error: 'FAL_API_KEY not configured' }, { status: 500 });
     }
 
+    // Map aspect ratios for Nano Banana 2
     const ratioMap = {
       '16:9': '16:9',
       '3:2': '3:2',
+      '4:3': '4:3',
       '3:4': '3:4',
+      '4:5': '4:5',
       '9:16': '9:16',
       '1:1': '1:1',
     };
@@ -40,6 +43,7 @@ export async function POST(request) {
 
     const submitData = await submitRes.json();
 
+    // If images returned directly (unlikely for queue but handle it)
     if (submitData.images && submitData.images.length > 0) {
       return Response.json({ imageUrl: submitData.images[0].url });
     }
@@ -51,7 +55,7 @@ export async function POST(request) {
 
     // Poll for completion
     let attempts = 0;
-    const maxAttempts = 90;
+    const maxAttempts = 90; // 3 minutes max
 
     while (attempts < maxAttempts) {
       await new Promise((r) => setTimeout(r, 2000));
@@ -59,16 +63,22 @@ export async function POST(request) {
 
       const statusRes = await fetch(
         `https://queue.fal.run/fal-ai/nano-banana-2/requests/${requestId}/status`,
-        { headers: { Authorization: `Key ${process.env.FAL_API_KEY}` } }
+        {
+          headers: { Authorization: `Key ${process.env.FAL_API_KEY}` },
+        }
       );
 
       if (!statusRes.ok) continue;
+
       const statusData = await statusRes.json();
 
       if (statusData.status === 'COMPLETED') {
+        // Fetch the result
         const resultRes = await fetch(
           `https://queue.fal.run/fal-ai/nano-banana-2/requests/${requestId}`,
-          { headers: { Authorization: `Key ${process.env.FAL_API_KEY}` } }
+          {
+            headers: { Authorization: `Key ${process.env.FAL_API_KEY}` },
+          }
         );
 
         if (!resultRes.ok) {
@@ -80,15 +90,15 @@ export async function POST(request) {
         if (resultData.images && resultData.images.length > 0) {
           return Response.json({ imageUrl: resultData.images[0].url });
         }
-        return Response.json({ error: 'No images in result' }, { status: 500 });
+        return Response.json({ error: 'No images in result', raw: resultData }, { status: 500 });
       }
 
       if (statusData.status === 'FAILED') {
-        return Response.json({ error: 'Image generation failed' }, { status: 500 });
+        return Response.json({ error: 'Image generation failed on fal.ai' }, { status: 500 });
       }
     }
 
-    return Response.json({ error: 'Timeout' }, { status: 504 });
+    return Response.json({ error: 'Timeout waiting for Nano Banana generation' }, { status: 504 });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }

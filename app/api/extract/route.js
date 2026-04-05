@@ -1,6 +1,7 @@
 export async function POST(request) {
   try {
-    const { brief, brandColors, brandFonts } = await request.json();
+    const { brief, brandColors, brandFonts, deviceCounts } = await request.json();
+    const counts = deviceCounts || { xdr: 1, macbook: 1, ipad: 6, iphone: 1 };
 
     const colorInstruction = brandColors
       ? `BRAND COLORS (use these exact colors): ${brandColors}`
@@ -39,7 +40,6 @@ CRITICAL RULES:
 2. ALL 9 images must share the SAME visual brand identity — same palette, same photographic style, same mood
 3. Every single image MUST incorporate relevant lifestyle/atmospheric photography — no image should be text-only on a flat color
 4. Describe the photography in detail: what's in the photo, the lighting style, the mood, how it's composed
-5. SAFE ZONE: All text and important visual elements must be positioned in the CENTER of the image with at least 15% margin from all edges. Nothing important should touch the outer edges because device screens will crop the borders. This is especially critical for iPhone (tall/narrow screen) and iPad images.
 
 DEVICE-SPECIFIC FORMATS:
 
@@ -48,13 +48,12 @@ PURPOSE: The hero image — the most cinematic, impressive visual in the set
 DESIGN: A full-bleed cinematic photograph relevant to the niche, with atmospheric lighting and depth. The product name is overlaid in large, premium display typography (think luxury brand advertising). Optional subtle tagline below. The photo should feel like a high-budget campaign shot — dramatic lighting, shallow depth of field, rich color grading in the brand palette. Think editorial magazine cover meets premium product launch.
 NOT: a plain gradient with text. NOT a 3D product render. NOT a mockup of a mockup.
 
-═══ MACBOOK PRO (1 image, 16:9 ratio) ═══
-PURPOSE: A premium "what you get" branded graphic — different angle from the XDR hero
-DESIGN: A DIFFERENT atmospheric photograph from the XDR (different scene, different angle, but same niche and same color grading). The product name at the top in elegant display text. Below it, 3-4 key benefit lines in LARGE bold text stacked vertically (e.g. "30 Juz Modules", "Daily Memorization Plans", "Lifetime Access"). Each line should be short — max 4 words. Text must be centered horizontally and vertically with generous margins on ALL sides (at least 15% from edges). The overall feel is a premium brand promise graphic, like a hero banner for the program.
-CRITICAL: Keep text LARGE and MINIMAL. No lists of 10+ items, no small text, no UI elements, no grids, no module names. Just 3-4 punchy benefit statements. The image WILL be cropped slightly so nothing important near the edges.
-NOT: a course dashboard. NOT a module list. NOT a fake app UI. NOT the same photo as the XDR.
+═══ MACBOOK PRO (1 image, 3:2 ratio) ═══
+PURPOSE: A second cinematic branded image — different from the XDR but same brand feel
+DESIGN: A completely DIFFERENT atmospheric photograph from the XDR (different scene, different subject, different composition — but same niche, same color grading, same mood). The product name centered in elegant display typography. That's it. No subtitles, no benefit lists, no bullet points, no UI. Just a beautiful photograph with the product name. Think of it as an alternate hero shot or a premium desktop wallpaper. All text must be centered with at least 20% margin from all edges.
+NOT: the same photo as the XDR. NOT a course dashboard. NOT a list. NOT any kind of UI.
 
-═══ iPAD PRO (6 images, 4:5 ratio) ═══
+═══ iPAD PRO (6 images, 3:4 ratio) ═══
 PURPOSE: Bonus components displayed as a uniform premium card set
 DESIGN: This is THE most important part. All 6 must follow the EXACT same visual template:
 - BACKGROUND: A lifestyle photograph relevant to that specific bonus topic, with a dark/moody color overlay in the brand palette (the photo shows through the overlay, creating depth and atmosphere)
@@ -70,8 +69,8 @@ For each iPad prompt:
 2. Then describe the UNIQUE CONTENT: the specific photo background, title text, icon, and description
 
 ═══ iPHONE 17 (1 image, 9:16 ratio) ═══
-PURPOSE: Mobile vertical format
-DESIGN: A vertical atmospheric photograph with text overlaid. CRITICAL: the phone screen is narrower than 9:16, so the image WILL be cropped on both sides. ALL text and important content must be placed in the CENTER 50% of the image width. The outer 25% on each side will be cut off — use only background/atmosphere in those areas, never text. Keep text short (max 3-4 words per line) and stack vertically. Center everything. Large margins everywhere.
+PURPOSE: Mobile vertical format — the product in a phone context
+DESIGN: A vertical version of the product's visual identity. Full-bleed atmospheric photography with the product name and a key selling point overlaid. Could also be styled as a premium mobile app splash screen or a social story graphic for the product. Must feel like part of the same visual suite.
 
 PROMPT WRITING RULES:
 - Be EXTREMELY specific about the photography: describe the scene, subjects, lighting direction, color temperature, depth of field
@@ -96,11 +95,16 @@ Return ONLY valid JSON (no markdown, no backticks):
   ]
 }
 
-STRICT ASSIGNMENT — exactly 9 components:
-- 1x XDR (device: "xdr") — cinematic hero image
-- 1x MacBook (device: "macbook") — program overview or alternate hero
-- 6x iPad (device: "ipad") — premium bonus cards with photography
-- 1x iPhone (device: "iphone") — vertical mobile format`,
+DEVICE ASSIGNMENT — generate exactly ${Object.values(counts).reduce((a, b) => a + b, 0)} components:
+${counts.xdr > 0 ? `- ${counts.xdr}x XDR (device: "xdr") — cinematic hero image` : ''}
+${counts.macbook > 0 ? `- ${counts.macbook}x MacBook (device: "macbook") — branded product graphic` : ''}
+${counts.ipad > 0 ? `- ${counts.ipad}x iPad (device: "ipad") — premium bonus cards with photography` : ''}
+${counts.iphone > 0 ? `- ${counts.iphone}x iPhone (device: "iphone") — vertical mobile format` : ''}
+
+${counts.ipad === 0 ? 'Skip iPad section entirely.' : counts.ipad < 6 ? `Generate only ${counts.ipad} iPad bonus cards instead of 6. Still use the same uniform template across all.` : ''}
+${counts.xdr === 0 ? 'Skip XDR section entirely.' : ''}
+${counts.macbook === 0 ? 'Skip MacBook section entirely.' : ''}
+${counts.iphone === 0 ? 'Skip iPhone section entirely.' : ''}`,
         messages: [{ role: 'user', content: brief }],
       }),
     });

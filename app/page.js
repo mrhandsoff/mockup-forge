@@ -4,69 +4,18 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 
 const DEVICE_META = {
   xdr: { label: 'Apple XDR', icon: '🖥️', aspect: '16:9' },
-  macbook: { label: 'MacBook Pro', icon: '💻', aspect: '16:9' },
-  ipad: { label: 'iPad Pro', icon: '📱', aspect: '4:5' },
+  macbook: { label: 'MacBook Pro', icon: '💻', aspect: '3:2' },
+  ipad: { label: 'iPad Pro', icon: '📱', aspect: '3:4' },
   iphone: { label: 'iPhone 17', icon: '📲', aspect: '9:16' },
 };
 
 const DEFAULT_MOCKUP_IDS = {
   xdr: 'X7PbdxQKSQEqm43S',
-  macbook: 'XtWDyavzoAIcEXk2',
-  ipad: 'adKBPdpIJk5GYpvi',
-  iphone: 'aMfKiv4O0AF5oGLE',
+  macbook: 'Z6NUCWxg1wFjtBDe',
+  ipad: 'adKDCNpIJk5GYtF8',
+  iphone: 'XtWDyavzoAIcEXmZ',
 };
 
-// Bundle layout presets (positions as % of canvas, z-order by array index)
-const BUNDLE_LAYOUTS = [
-  {
-    name: 'Classic',
-    desc: 'XDR back, MacBook center, iPads spread',
-    canvas: { w: 3840, h: 2400 },
-    items: [
-      { device: 'xdr',     x: 50,  y: 24,  w: 54, z: 1 },
-      { device: 'macbook',  x: 50,  y: 56,  w: 36, z: 2 },
-      { device: 'ipad-0',   x: 8,   y: 82,  w: 12, z: 3 },
-      { device: 'ipad-1',   x: 21,  y: 82,  w: 12, z: 3 },
-      { device: 'ipad-2',   x: 34,  y: 82,  w: 12, z: 3 },
-      { device: 'ipad-3',   x: 66,  y: 82,  w: 12, z: 3 },
-      { device: 'ipad-4',   x: 79,  y: 82,  w: 12, z: 3 },
-      { device: 'ipad-5',   x: 92,  y: 82,  w: 12, z: 3 },
-      { device: 'iphone',   x: 50,  y: 78,  w: 6,  z: 4 },
-    ],
-  },
-  {
-    name: 'Asymmetric',
-    desc: 'XDR back, MacBook left, iPads right-heavy',
-    canvas: { w: 3840, h: 2400 },
-    items: [
-      { device: 'xdr',     x: 50,  y: 24,  w: 54, z: 1 },
-      { device: 'macbook',  x: 30,  y: 58,  w: 36, z: 2 },
-      { device: 'iphone',   x: 15,  y: 78,  w: 6,  z: 4 },
-      { device: 'ipad-0',   x: 38,  y: 84,  w: 11, z: 3 },
-      { device: 'ipad-1',   x: 50,  y: 84,  w: 11, z: 3 },
-      { device: 'ipad-2',   x: 62,  y: 84,  w: 11, z: 3 },
-      { device: 'ipad-3',   x: 74,  y: 84,  w: 11, z: 3 },
-      { device: 'ipad-4',   x: 86,  y: 84,  w: 11, z: 3 },
-      { device: 'ipad-5',   x: 98,  y: 84,  w: 11, z: 3 },
-    ],
-  },
-  {
-    name: 'Stacked',
-    desc: 'XDR dominant, devices layered below',
-    canvas: { w: 3840, h: 2800 },
-    items: [
-      { device: 'xdr',     x: 50,  y: 20,  w: 58, z: 1 },
-      { device: 'macbook',  x: 50,  y: 50,  w: 40, z: 2 },
-      { device: 'ipad-0',   x: 10,  y: 75,  w: 11, z: 3 },
-      { device: 'ipad-1',   x: 22,  y: 75,  w: 11, z: 3 },
-      { device: 'ipad-2',   x: 34,  y: 75,  w: 11, z: 3 },
-      { device: 'iphone',   x: 50,  y: 72,  w: 6,  z: 4 },
-      { device: 'ipad-3',   x: 66,  y: 75,  w: 11, z: 3 },
-      { device: 'ipad-4',   x: 78,  y: 75,  w: 11, z: 3 },
-      { device: 'ipad-5',   x: 90,  y: 75,  w: 11, z: 3 },
-    ],
-  },
-];
 
 export default function Home() {
   const [brief, setBrief] = useState('');
@@ -79,14 +28,13 @@ export default function Home() {
   const [error, setError] = useState('');
   const [mockupIds, setMockupIds] = useState(DEFAULT_MOCKUP_IDS);
   const [showSettings, setShowSettings] = useState(false);
+  const [deviceCounts, setDeviceCounts] = useState({ xdr: 1, macbook: 1, ipad: 6, iphone: 1 });
 
   // Generation state
   const [currentIndex, setCurrentIndex] = useState(-1);
   const [generatingStep, setGeneratingStep] = useState(''); // 'image' | 'mockup' | 'done' | ''
   const [results, setResults] = useState([]);
   const stopRef = useRef(false);
-  const [selectedLayout, setSelectedLayout] = useState(0);
-  const canvasRef = useRef(null);
   const [bundleExporting, setBundleExporting] = useState(false);
 
   useEffect(() => {
@@ -115,7 +63,7 @@ export default function Home() {
       const res = await fetch('/api/extract', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ brief, brandColors, brandFonts }),
+        body: JSON.stringify({ brief, brandColors, brandFonts, deviceCounts }),
       });
       if (!res.ok) {
         const data = await res.json();
@@ -131,7 +79,7 @@ export default function Home() {
       setError(err.message);
       setPhase('input');
     }
-  }, [brief, brandColors, brandFonts]);
+  }, [brief, brandColors, brandFonts, deviceCounts]);
 
   const updateComponent = (i, field, value) => {
     setComponents((prev) => {
@@ -191,9 +139,9 @@ export default function Home() {
         mockupUrl = mockData.url || null;
       }
 
-      // Step 3: Remove background from mockup
+      // Step 3: Remove background (iPad only)
       let noBgUrl = null;
-      if (mockupUrl) {
+      if (mockupUrl && comp.device === 'ipad') {
         setGeneratingStep('removing-bg');
         try {
           const bgRes = await fetch('/api/remove-bg', {
@@ -274,74 +222,6 @@ export default function Home() {
     stopRef.current = false;
   };
 
-  // Map results to layout slots
-  const getImageForSlot = (deviceKey) => {
-    if (deviceKey === 'xdr') return results.find(r => r && r.device === 'xdr');
-    if (deviceKey === 'macbook') return results.find(r => r && r.device === 'macbook');
-    if (deviceKey === 'iphone') return results.find(r => r && r.device === 'iphone');
-    if (deviceKey.startsWith('ipad-')) {
-      const idx = parseInt(deviceKey.split('-')[1]);
-      const ipads = results.filter(r => r && r.device === 'ipad');
-      return ipads[idx] || null;
-    }
-    return null;
-  };
-
-  // Export bundle as PNG
-  const exportBundle = useCallback(async () => {
-    const layout = BUNDLE_LAYOUTS[selectedLayout];
-    if (!layout) return;
-    setBundleExporting(true);
-
-    try {
-      const canvas = document.createElement('canvas');
-      canvas.width = layout.canvas.w;
-      canvas.height = layout.canvas.h;
-      const ctx = canvas.getContext('2d');
-
-      // Transparent background
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      // Sort items by z-index
-      const sorted = [...layout.items].sort((a, b) => a.z - b.z);
-
-      // Load and draw each image
-      for (const item of sorted) {
-        const result = getImageForSlot(item.device);
-        const url = result?.noBgUrl || result?.mockupUrl || result?.rawImageUrl;
-        if (!url) continue;
-
-        try {
-          const img = new Image();
-          img.crossOrigin = 'anonymous';
-          await new Promise((resolve, reject) => {
-            img.onload = resolve;
-            img.onerror = reject;
-            img.src = `/api/proxy-image?url=${encodeURIComponent(url)}`;
-          });
-
-          const itemW = (item.w / 100) * canvas.width;
-          const aspectRatio = img.naturalHeight / img.naturalWidth;
-          const itemH = itemW * aspectRatio;
-          const itemX = ((item.x / 100) * canvas.width) - (itemW / 2);
-          const itemY = ((item.y / 100) * canvas.height) - (itemH / 2);
-
-          ctx.drawImage(img, itemX, itemY, itemW, itemH);
-        } catch (e) {
-          console.warn(`Failed to load image for ${item.device}:`, e);
-        }
-      }
-
-      // Download
-      const link = document.createElement('a');
-      link.download = `${productName.replace(/\s+/g, '-')}-bundle.png`;
-      link.href = canvas.toDataURL('image/png');
-      link.click();
-    } catch (err) {
-      setError('Bundle export failed: ' + err.message);
-    }
-    setBundleExporting(false);
-  }, [selectedLayout, results, productName]);
 
   // Download all mockups as ZIP
   const downloadAllZip = useCallback(async () => {
@@ -458,6 +338,26 @@ export default function Home() {
               </div>
             </div>
 
+            {/* Device Count Selector */}
+            <div style={{ marginTop:12, background:s.card, border:`1px solid ${s.border}`, borderRadius:10, padding:14 }}>
+              <label style={{ fontSize:12, color:s.muted, display:'block', marginBottom:10 }}>Devices to generate</label>
+              <div style={{ display:'flex', gap:12, flexWrap:'wrap' }}>
+                {Object.entries(DEVICE_META).map(([key, meta]) => (
+                  <div key={key} style={{ display:'flex', alignItems:'center', gap:6 }}>
+                    <span style={{ fontSize:13, color:s.text }}>{meta.icon} {meta.label}</span>
+                    <div style={{ display:'flex', alignItems:'center', gap:2 }}>
+                      <button onClick={() => setDeviceCounts(p => ({ ...p, [key]: Math.max(0, p[key] - 1) }))} style={{ width:24, height:24, background:s.bg, border:`1px solid ${s.border}`, borderRadius:4, color:s.text, cursor:'pointer', fontSize:14, display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'inherit' }}>−</button>
+                      <span style={{ width:24, textAlign:'center', fontSize:14, fontWeight:600, color:s.accentLight }}>{deviceCounts[key]}</span>
+                      <button onClick={() => setDeviceCounts(p => ({ ...p, [key]: Math.min(key === 'ipad' ? 12 : 2, p[key] + 1) }))} style={{ width:24, height:24, background:s.bg, border:`1px solid ${s.border}`, borderRadius:4, color:s.text, cursor:'pointer', fontSize:14, display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'inherit' }}>+</button>
+                    </div>
+                  </div>
+                ))}
+                <span style={{ fontSize:12, color:s.muted, alignSelf:'center', marginLeft:8 }}>
+                  Total: {Object.values(deviceCounts).reduce((a, b) => a + b, 0)}
+                </span>
+              </div>
+            </div>
+
             <button onClick={handleExtract} disabled={!brief.trim()} style={{ marginTop:16, width:'100%', padding:'13px 24px', background:brief.trim() ? `linear-gradient(135deg,${s.accent},${s.accentLight})` : s.card, border:'none', borderRadius:10, color:brief.trim() ? 'white' : '#4b4b5b', fontSize:15, fontWeight:600, fontFamily:'inherit', cursor:brief.trim() ? 'pointer' : 'default' }}>
               Analyze Product Brief →
             </button>
@@ -527,8 +427,7 @@ export default function Home() {
                 {phase === 'done' && (
                   <>
                     <button onClick={handleReset} style={{ padding:'8px 16px', background:s.card, border:`1px solid ${s.border}`, borderRadius:8, color:s.muted, fontSize:12, fontFamily:'inherit', cursor:'pointer' }}>New Product</button>
-                    <button onClick={downloadAllZip} disabled={bundleExporting} style={{ padding:'8px 16px', background:s.card, border:`1px solid ${s.border}`, borderRadius:8, color:s.text, fontSize:12, fontFamily:'inherit', cursor:'pointer' }}>{bundleExporting ? 'Zipping...' : 'Download All ZIP'}</button>
-                    <button onClick={() => setPhase('bundle')} style={{ padding:'8px 16px', background:`linear-gradient(135deg,${s.accent},${s.accentLight})`, border:'none', borderRadius:8, color:'white', fontSize:12, fontWeight:600, fontFamily:'inherit', cursor:'pointer' }}>Create Bundle →</button>
+                    <button onClick={downloadAllZip} disabled={bundleExporting} style={{ padding:'8px 16px', background:`linear-gradient(135deg,${s.accent},${s.accentLight})`, border:'none', borderRadius:8, color:'white', fontSize:12, fontWeight:600, fontFamily:'inherit', cursor:'pointer' }}>{bundleExporting ? 'Zipping...' : 'Download All ZIP'}</button>
                   </>
                 )}
               </div>
@@ -636,83 +535,6 @@ export default function Home() {
                 );
               })}
             </div>
-          </div>
-        )}
-
-        {/* PHASE: BUNDLE */}
-        {phase === 'bundle' && (
-          <div>
-            <div style={{ marginBottom:20, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-              <div>
-                <h2 style={{ fontSize:20, fontWeight:600 }}>{productName} — Bundle Compositor</h2>
-                <p style={{ color:s.muted, fontSize:13, marginTop:4 }}>Pick a layout, preview, and export as PNG</p>
-              </div>
-              <div style={{ display:'flex', gap:8 }}>
-                <button onClick={() => setPhase('done')} style={{ padding:'8px 16px', background:s.card, border:`1px solid ${s.border}`, borderRadius:8, color:s.muted, fontSize:12, fontFamily:'inherit', cursor:'pointer' }}>← Back to Mockups</button>
-              </div>
-            </div>
-
-            {/* Layout selector */}
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:12, marginBottom:24 }}>
-              {BUNDLE_LAYOUTS.map((layout, i) => (
-                <button key={i} onClick={() => setSelectedLayout(i)} style={{
-                  background: selectedLayout === i ? `${s.accent}20` : s.card,
-                  border: `2px solid ${selectedLayout === i ? s.accent : s.border}`,
-                  borderRadius:10, padding:16, cursor:'pointer', textAlign:'left', fontFamily:'inherit',
-                }}>
-                  <div style={{ fontSize:14, fontWeight:600, color: selectedLayout === i ? s.accentLight : s.text }}>{layout.name}</div>
-                  <div style={{ fontSize:12, color:s.muted, marginTop:4 }}>{layout.desc}</div>
-                  {/* Mini layout preview */}
-                  <div style={{ position:'relative', width:'100%', aspectRatio:'16/10', background:s.bg, borderRadius:6, marginTop:10, overflow:'hidden' }}>
-                    {layout.items.map((item, j) => (
-                      <div key={j} style={{
-                        position:'absolute',
-                        left:`${item.x - item.w/2}%`, top:`${item.y - item.w*0.4}%`,
-                        width:`${item.w}%`, aspectRatio: item.device.startsWith('ipad') ? '3/4' : item.device === 'iphone' ? '9/16' : '16/10',
-                        background: selectedLayout === i ? s.accent+'60' : s.border,
-                        borderRadius:2, border:`1px solid ${selectedLayout === i ? s.accentLight : '#3a3a4e'}`,
-                      }} />
-                    ))}
-                  </div>
-                </button>
-              ))}
-            </div>
-
-            {/* Bundle preview */}
-            <div style={{ background:s.card, border:`1px solid ${s.border}`, borderRadius:12, padding:20, marginBottom:20 }}>
-              <div style={{ position:'relative', width:'100%', aspectRatio:`${BUNDLE_LAYOUTS[selectedLayout].canvas.w}/${BUNDLE_LAYOUTS[selectedLayout].canvas.h}`, background:'transparent', overflow:'hidden', borderRadius:8 }}>
-                {BUNDLE_LAYOUTS[selectedLayout].items
-                  .slice().sort((a,b) => a.z - b.z)
-                  .map((item, i) => {
-                    const result = getImageForSlot(item.device);
-                    const url = result?.noBgUrl || result?.mockupUrl || result?.rawImageUrl;
-                    if (!url) return null;
-                    const isPortrait = item.device.startsWith('ipad') || item.device === 'iphone';
-                    const aspect = item.device === 'iphone' ? '9/16' : item.device.startsWith('ipad') ? '3/4' : item.device === 'macbook' ? '3/2' : '16/9';
-                    return (
-                      <img key={i} src={url} alt={item.device} style={{
-                        position:'absolute',
-                        left:`${item.x}%`, top:`${item.y}%`,
-                        transform:'translate(-50%, -50%)',
-                        width:`${item.w}%`,
-                        zIndex: item.z,
-                        borderRadius:4,
-                        filter:'drop-shadow(0 4px 20px rgba(0,0,0,0.4))',
-                      }} />
-                    );
-                  })}
-              </div>
-            </div>
-
-            {/* Export button */}
-            <button onClick={exportBundle} disabled={bundleExporting} style={{
-              width:'100%', padding:'14px 24px',
-              background: bundleExporting ? s.card : `linear-gradient(135deg,${s.accent},${s.accentLight})`,
-              border:'none', borderRadius:10, color:'white', fontSize:15, fontWeight:600,
-              fontFamily:'inherit', cursor: bundleExporting ? 'default' : 'pointer',
-            }}>
-              {bundleExporting ? 'Exporting...' : 'Download Bundle PNG'}
-            </button>
           </div>
         )}
       </div>
