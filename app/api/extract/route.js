@@ -49,12 +49,10 @@ DESIGN: A full-bleed cinematic photograph relevant to the niche, with atmospheri
 NOT: a plain gradient with text. NOT a 3D product render. NOT a mockup of a mockup.
 
 ═══ MACBOOK PRO (1 image, 16:9 ratio) ═══
-PURPOSE: Show the product experience — what it feels like to be inside the program
-DESIGN: A premium branded overview screen. Two good options:
-Option A — "What's Inside" overview: Dark branded background with atmospheric photography blended in. A elegant grid or list showing module/chapter names with small icons or numbering. Progress indicators or decorative elements. The product name at top. Looks like a premium app's home screen.
-Option B — Alternate hero angle: A different cinematic photograph from the same niche, with the product name and a compelling subtitle/promise overlaid. Different composition from the XDR image but same brand feel.
-Choose whichever option fits the product better. Both must incorporate photography.
-NOT: a fake web application screenshot with UI elements. NOT a course dashboard with sidebars and buttons.
+PURPOSE: A premium "what you get" branded graphic — different angle from the XDR hero
+DESIGN: A DIFFERENT atmospheric photograph from the XDR (different scene, different angle, but same niche and same color grading). The product name at the top in elegant display text. Below it, 3-4 key benefit lines in LARGE bold text stacked vertically (e.g. "30 Juz Modules", "Daily Memorization Plans", "Lifetime Access"). Each line should be short — max 4 words. Text must be centered horizontally and vertically with generous margins on ALL sides (at least 15% from edges). The overall feel is a premium brand promise graphic, like a hero banner for the program.
+CRITICAL: Keep text LARGE and MINIMAL. No lists of 10+ items, no small text, no UI elements, no grids, no module names. Just 3-4 punchy benefit statements. The image WILL be cropped slightly so nothing important near the edges.
+NOT: a course dashboard. NOT a module list. NOT a fake app UI. NOT the same photo as the XDR.
 
 ═══ iPAD PRO (6 images, 4:5 ratio) ═══
 PURPOSE: Bonus components displayed as a uniform premium card set
@@ -72,8 +70,8 @@ For each iPad prompt:
 2. Then describe the UNIQUE CONTENT: the specific photo background, title text, icon, and description
 
 ═══ iPHONE 17 (1 image, 9:16 ratio) ═══
-PURPOSE: Mobile vertical format — the product in a phone context
-DESIGN: A vertical version of the product's visual identity. Full-bleed atmospheric photography with the product name and a key selling point overlaid. Could also be styled as a premium mobile app splash screen or a social story graphic for the product. Must feel like part of the same visual suite.
+PURPOSE: Mobile vertical format
+DESIGN: A vertical atmospheric photograph with text overlaid. CRITICAL: the phone screen is narrower than 9:16, so the image WILL be cropped on both sides. ALL text and important content must be placed in the CENTER 50% of the image width. The outer 25% on each side will be cut off — use only background/atmosphere in those areas, never text. Keep text short (max 3-4 words per line) and stack vertically. Center everything. Large margins everywhere.
 
 PROMPT WRITING RULES:
 - Be EXTREMELY specific about the photography: describe the scene, subjects, lighting direction, color temperature, depth of field
