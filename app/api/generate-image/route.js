@@ -10,7 +10,7 @@ export async function POST(request) {
 
     const ratioMap = {
       '16:9': '16:9',
-      '4:5': '4:5',
+      '3:2': '3:2',
       '3:4': '3:4',
       '9:16': '9:16',
       '1:1': '1:1',

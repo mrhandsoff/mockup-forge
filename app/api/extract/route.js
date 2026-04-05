@@ -39,6 +39,7 @@ CRITICAL RULES:
 2. ALL 9 images must share the SAME visual brand identity — same palette, same photographic style, same mood
 3. Every single image MUST incorporate relevant lifestyle/atmospheric photography — no image should be text-only on a flat color
 4. Describe the photography in detail: what's in the photo, the lighting style, the mood, how it's composed
+5. SAFE ZONE: All text and important visual elements must be positioned in the CENTER of the image with at least 15% margin from all edges. Nothing important should touch the outer edges because device screens will crop the borders. This is especially critical for iPhone (tall/narrow screen) and iPad images.
 
 DEVICE-SPECIFIC FORMATS:
 

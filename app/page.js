@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 
 const DEVICE_META = {
   xdr: { label: 'Apple XDR', icon: '🖥️', aspect: '16:9' },
-  macbook: { label: 'MacBook Pro', icon: '💻', aspect: '16:9' },
+  macbook: { label: 'MacBook Pro', icon: '💻', aspect: '3:2' },
   ipad: { label: 'iPad Pro', icon: '📱', aspect: '3:4' },
   iphone: { label: 'iPhone 17', icon: '📲', aspect: '9:16' },
 };
