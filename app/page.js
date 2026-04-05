@@ -572,7 +572,7 @@ function CropTool({ imageUrl, targetW, targetH, deviceLabel, onConfirm, onSkip, 
 
       ctx.drawImage(img, sx, sy, sw, sh, 0, 0, targetW, targetH);
 
-      const base64 = canvas.toDataURL('image/png').split(',')[1];
+      const base64 = canvas.toDataURL('image/jpeg', 0.9).split(',')[1];
       await onConfirm(base64);
     } catch (err) {
       console.error('Crop failed:', err);

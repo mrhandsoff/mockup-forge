@@ -13,7 +13,7 @@ export async function POST(request) {
 
     const blob = await put(name, buffer, {
       access: 'public',
-      contentType: 'image/png',
+      contentType: 'image/jpeg',
     });
 
     return Response.json({ url: blob.url });
