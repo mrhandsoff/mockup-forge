@@ -1,17 +1,12 @@
 export const maxDuration = 60;
+
 export async function POST(request) {
   try {
     const { imageUrl, mockupId, size } = await request.json();
 
-    if (!mockupId) {
-      return Response.json({ error: 'No mockupId provided' }, { status: 400 });
-    }
+    if (!mockupId) return Response.json({ error: 'No mockupId' }, { status: 400 });
+    if (!process.env.MOCKUUUPS_API_KEY) return Response.json({ error: 'No API key' }, { status: 500 });
 
-    if (!process.env.MOCKUUUPS_API_KEY) {
-      return Response.json({ error: 'MOCKUUUPS_API_KEY not configured' }, { status: 500 });
-    }
-
-    // Submit render request
     const response = await fetch('https://api.mockuuups.studio/v1/renders', {
       method: 'POST',
       headers: {
@@ -21,79 +16,44 @@ export async function POST(request) {
       body: JSON.stringify({
         mockup: mockupId,
         size: size || 1000,
-        mode: 'async',
+        mode: 'sync',
         destination: 'cdn',
-        contents: [
-          {
-            type: 'image',
-            url: imageUrl,
-          },
-        ],
+        contents: [{ type: 'image', url: imageUrl }],
       }),
     });
 
+    const text = await response.text();
+    console.log('Mockuuups raw response:', response.status, text);
+
     if (!response.ok) {
-      const err = await response.text();
-      return Response.json(
-        { error: `Mockuuups API error (${response.status}): ${err}` },
-        { status: response.status }
-      );
+      return Response.json({ error: `Mockuuups ${response.status}: ${text}` }, { status: response.status });
     }
 
-    const data = await response.json();
-
-    // If we got a direct URL back, return it
-    if (data.url || data.image || data.download_url) {
-      return Response.json({
-        url: data.url || data.image || data.download_url,
-        thumbnail: data.thumbnail || null,
-        raw: data,
-      });
+    let data;
+    try { data = JSON.parse(text); } catch(e) {
+      return Response.json({ error: 'Invalid JSON from Mockuuups', raw: text.slice(0, 500) }, { status: 500 });
     }
 
-    // If async with a render ID, poll for completion
-    if (data.id || data.render_id) {
-      const renderId = data.id || data.render_id;
-      let attempts = 0;
-      const maxAttempts = 30;
+    // Find URL anywhere in response
+    const url = findUrl(data);
+    return Response.json({ url, raw: data });
 
-      while (attempts < maxAttempts) {
-        await new Promise((r) => setTimeout(r, 2000));
-        attempts++;
-
-        const pollRes = await fetch(`https://api.mockuuups.studio/v1/renders/${renderId}`, {
-          headers: {
-            Authorization: `Bearer ${process.env.MOCKUUUPS_API_KEY}`,
-          },
-        });
-
-        if (!pollRes.ok) continue;
-
-        const pollData = await pollRes.json();
-
-        if (pollData.url || pollData.image || pollData.download_url) {
-          return Response.json({
-            url: pollData.url || pollData.image || pollData.download_url,
-            thumbnail: pollData.thumbnail || null,
-            raw: pollData,
-          });
-        }
-
-        if (pollData.status === 'failed' || pollData.status === 'error') {
-          return Response.json({ error: 'Mockup render failed' }, { status: 500 });
-        }
-      }
-
-      return Response.json({ error: 'Timeout waiting for mockup render' }, { status: 504 });
-    }
-
-    // Fallback: return whatever we got
-    return Response.json({
-      url: null,
-      raw: data,
-      error: 'Unexpected response format — check Mockuuups API docs',
-    });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }
+}
+
+function findUrl(obj) {
+  if (!obj || typeof obj !== 'object') return null;
+  const fields = ['url','image','download_url','image_url','mockup_url','cdn_url','render_url','file','src','href','link','download','thumbnail'];
+  for (const f of fields) {
+    if (obj[f] && typeof obj[f] === 'string' && obj[f].startsWith('http')) return obj[f];
+  }
+  for (const key of Object.keys(obj)) {
+    if (typeof obj[key] === 'object' && obj[key] !== null) {
+      const found = findUrl(obj[key]);
+      if (found) return found;
+    }
+  }
+  return null;
 }
